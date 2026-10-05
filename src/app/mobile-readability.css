@@ -1,0 +1,72 @@
+/* Mobile text uses a readable scale instead of the miniature reference mockup. */
+@media (max-width: 767px) {
+  body { font-size: 16px; line-height: 1.5; }
+  .breadcrumb strong { font-size: 17px; color: #51465f; }
+  .topbar-right .connection { font-size: 12px; color: #62576f; }
+  .eyebrow, .quest-greeting > div > span, .period { font-size: 13px; color: #746280; font-weight: 600; }
+  .app-shell .quest-greeting h2 { font-size: 30px; line-height: 1.25; }
+  .quest-level-top { flex-wrap: wrap; row-gap: 12px; }
+  .level-label { font-size: 12px; color: #746080; letter-spacing: .5px; }
+  .app-shell .quest-level h3 { font-size: 17px; line-height: 1.4; color: #654776 !important; font-weight: 600 !important; }
+  .xp-badge { font-size: 14px; color: #745080; font-weight: 600; }
+  .quest-level-bottom { font-size: 13px; color: #776082; flex-wrap: wrap; gap: 8px 14px; }
+  .daily-quest strong { font-size: 17px; color: #654776; font-weight: 600; }
+  .app-shell .daily-quest p { font-size: 14px; line-height: 1.6; color: #796486; }
+  .section-toolbar { gap: 12px; flex-wrap: wrap; }
+  .month-control { font-size: 15px; min-height: 44px; color: #725980; }
+  .stat-label { font-size: 15px; color: #64566f; line-height: 1.5; }
+  .stat-caption, .balance-caption { font-size: 13px; line-height: 1.6; }
+  .stat-caption { color: #786486; }
+  .stat-value { font-size: clamp(24px, 6.2vw, 29px); font-weight: 500; white-space: normal; overflow-wrap: anywhere; }
+  .stat-card:last-child .stat-value { font-size: 29px; }
+  .balance-card .stat-label { font-size: 16px; font-weight: 500; color: #fff; }
+  .balance-card .stat-value { font-size: 38px; font-weight: 500; }
+  .balance-card .balance-caption { color: #fff; }
+  .app-shell .panel-heading h2 { font-size: 18px; line-height: 1.4; font-weight: 600; }
+  .panel-heading { flex-wrap: wrap; gap: 12px; }
+  .panel-heading p, .legend, .chart-footer, .category-footer { font-size: 13px; line-height: 1.6; color: #776184; }
+  .category-legend { font-size: 14px; }
+  .category-legend span, .category-legend strong { color: #705480; }
+  .category-content { flex-wrap: wrap; }
+  .donut-hole small, .donut-hole > span { font-size: 12px; color: #756180; }
+  .breakdown-tabs { flex-wrap: wrap; }
+  .breakdown-tabs button, .transactions-panel .panel-heading .btn { font-size: 14px; min-height: 44px; color: #765583; }
+  .search-field input, .table-filters select { font-size: 16px; color: #665072; }
+  .search-field input::placeholder { color: #82718d; }
+  .mobile-transaction-info > strong { font-size: 16px; color: #5b406b; font-weight: 600; }
+  .mobile-transaction-info > span, .mobile-transaction-info > small, .mobile-transaction-amount > span { font-size: 13px; line-height: 1.5; color: #786085; }
+  .mobile-transaction-amount strong { font-size: 17px; font-weight: 600; }
+  .mobile-transaction-actions { flex-wrap: wrap; }
+  .mobile-transaction-actions button { font-size: 14px; min-height: 44px; color: #775783; }
+  .table-footer, .table-footer button, .page-footer, .admin-footer { font-size: 12px; line-height: 1.6; color: #7c668a; }
+  .table-footer { flex-wrap: wrap; gap: 10px; }
+  .mobile-dock.dock { height: 76px; color: #357d91; }
+  .mobile-dock.dock > button { min-height: 60px; }
+  .mobile-dock .dock-label, .admin-mobile-nav .dock-label { font-size: 12px; font-weight: 600; line-height: 1.25; }
+  .mobile-dock.dock > button.dock-add { margin-inline: 2px; }
+  .planning-heading p, .plan-card small, .plan-caption, .plan-explainer, .plan-owner, .planning-empty p { font-size: 14px; line-height: 1.6; color: #7a5b8b; }
+  .plan-card h3 { font-size: 18px; color: #6d477f; font-weight: 600; }
+  .planning-tabs .tab, .planning-heading .btn, .plan-card-top .badge { font-size: 14px; min-height: 44px; }
+  .plan-amount span { font-size: 14px; color: #80618e; }
+  .transaction-dialog label, .planning-modal .fieldset-legend { font-size: 15px; color: #745281; }
+  .dialog-heading p, .form-error, .confirm-dialog p { font-size: 14px; line-height: 1.6; }
+  .type-switch button, .transaction-dialog .dialog-footer .button { font-size: 16px; }
+  .login-story > p, .login-card .card-body > p, .login-checks, .login-privacy { font-size: 15px; line-height: 1.7; color: #775583; }
+  .google-button.btn { font-size: 16px; }
+  .login-footer { font-size: 12px; color: #80698d; }
+  .admin-page-heading p, .admin-page-heading .eyebrow { font-size: 14px; color: #7d638b; }
+  .admin-mobile-list strong, .admin-cell-user strong { font-size: 16px; font-weight: 600; }
+  .admin-cell-user small, .admin-recent-user small { font-size: 13px; color: #80668e; }
+  .admin-mobile-list .badge, .admin-page-heading .btn, .admin-data-toolbar .select { font-size: 14px; }
+  .admin-data-toolbar .input { font-size: 16px; }
+  .empty strong { font-size: 18px; }
+  .empty span { font-size: 15px; line-height: 1.6; }
+}
+
+@media (max-width: 380px) {
+  .quest-level-top { gap: 10px; }
+  .level-label { font-size: 11px; }
+  .app-shell .quest-level h3 { font-size: 16px; }
+  .mobile-dock .dock-label, .admin-mobile-nav .dock-label { font-size: 11px; }
+  .topbar-right .connection { font-size: 11px; }
+}
