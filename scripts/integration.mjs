@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+import { mkdirSync, writeFileSync, existsSync, unlinkSync } from 'node:fs';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { MongoClient } from 'mongodb';
 import { encode } from 'next-auth/jwt';
@@ -17,6 +18,10 @@ const client = await new MongoClient(uri, { serverSelectionTimeoutMS: 5000 }).co
 const db = client.db(database);
 const cookies = await Promise.all(ownerIds.map(async ownerId => `authjs.session-token=${await encode({ secret, salt: 'authjs.session-token', token: { ownerId, sub: ownerId, name: ownerId }, maxAge: 3600 })}`));
 let server;
+const workers = process.env.TEST_RUNTIME === 'workers';
+const workerConfig = '.scratch/wrangler-integration.json';
+const workerSecrets = '.scratch/.dev.vars';
+const createdWorkerFiles = [];
 let checks = 0;
 async function api(path, who, method = 'GET', body, origin = base) {
   const response = await fetch(`${base}${path}`, { method, headers: { ...(who === undefined ? {} : { cookie: cookies[who] }), ...(method === 'GET' ? {} : { origin, 'Content-Type': 'application/json' }) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
@@ -25,7 +30,17 @@ async function api(path, who, method = 'GET', body, origin = base) {
 function check(condition, message) { assert.ok(condition, message); checks++; console.log(`PASS ${message}`); }
 try {
   await db.collection('users').insertMany(ownerIds.map((ownerId, i) => ({ ownerId, name: ['Alice Test', 'Bob Test', 'Admin Test'][i], email: `integration-${i}@example.invalid`, image: '', role: i === 2 ? 'admin' : 'member', status: 'active', createdAt: new Date(), lastLoginAt: new Date() })));
-  server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', port], { env: { ...process.env, NODE_ENV: 'production', MONGODB_URI: uri, MONGODB_DB: database, AUTH_SECRET: secret, AUTH_URL: base, AUTH_GOOGLE_ID: 'integration-only', AUTH_GOOGLE_SECRET: 'integration-only' }, stdio: ['ignore', 'ignore', 'pipe'], windowsHide: true });
+  const testEnv = { MONGODB_URI: uri, MONGODB_DB: database, AUTH_SECRET: secret, AUTH_URL: base, AUTH_GOOGLE_ID: 'integration-only', AUTH_GOOGLE_SECRET: 'integration-only', AUTH_TRUST_HOST: 'true' };
+  if (workers) {
+    mkdirSync('.scratch', { recursive: true });
+    assert.ok(!existsSync(workerSecrets), 'Refusing to overwrite existing Workers test secrets');
+    writeFileSync(workerConfig, JSON.stringify({ name: 'money-manager-integration', main: '../cloudflare-worker.mjs', compatibility_date: '2026-10-05', compatibility_flags: ['nodejs_compat'], assets: { directory: '../.open-next/assets', binding: 'ASSETS' } }));
+    createdWorkerFiles.push(workerConfig);
+    writeFileSync(workerSecrets, Object.entries(testEnv).map(([key, value]) => `${key}=${JSON.stringify(value)}`).join('\n'));
+    createdWorkerFiles.push(workerSecrets);
+  }
+  const serverArgs = workers ? ['node_modules/wrangler/bin/wrangler.js', 'dev', '--config', workerConfig, '--ip', '127.0.0.1', '--port', port] : ['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', port];
+  server = spawn(process.execPath, serverArgs, { env: { ...process.env, NODE_ENV: 'production', ...testEnv, CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: 'false' }, stdio: ['ignore', 'ignore', 'pipe'], windowsHide: true });
   let serverErrors = '';
   server.stderr.on('data', data => { serverErrors = (serverErrors + data.toString()).slice(-2500); });
   let ready = false;
@@ -75,9 +90,14 @@ try {
   check(anonymousPage.status === 307 && anonymousPage.headers.get('location') === '/login', 'Admin page guards anonymous visits');
   const memberPage = await fetch(`${base}/admin`, { headers: { cookie: cookies[0] }, redirect: 'manual' });
   check(memberPage.status === 307 && memberPage.headers.get('location') === '/', 'Admin page guards member visits');
-  console.log(`\n${checks} integration checks passed.`);
+  console.log(`\n${checks} integration checks passed (${workers ? 'Cloudflare Workers' : 'Node.js'}).`);
 } finally {
-  if (server) { server.kill(); await new Promise(resolve => { server.once('exit', resolve); setTimeout(resolve, 3000); }); }
+  if (server) {
+    if (workers && process.platform === 'win32') spawnSync('taskkill', ['/PID', String(server.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
+    else server.kill();
+    await new Promise(resolve => { server.once('exit', resolve); setTimeout(resolve, 3000); });
+  }
+  for (const file of createdWorkerFiles) if (existsSync(file)) unlinkSync(file);
   await Promise.all(['users', 'transactions', 'plans'].map(collection => db.collection(collection).deleteMany({ ownerId: { $in: ownerIds } })));
   await client.close();
 }

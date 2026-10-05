@@ -2,8 +2,8 @@ import NextAuth from 'next-auth';
 import Google from 'next-auth/providers/google';
 import { getUsers } from '@/lib/mongodb';
 
-export const authConfigured = Boolean(process.env.AUTH_SECRET && process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const authConfigured = () => Boolean(process.env.AUTH_SECRET && process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
+export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
   providers: [Google({ authorization: { params: { prompt: 'select_account', scope: 'openid email profile' } } })],
   session: { strategy: 'jwt', maxAge: 7 * 24 * 60 * 60 },
   pages: { signIn: '/login', error: '/login' },
@@ -28,4 +28,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
   },
-});
+}));

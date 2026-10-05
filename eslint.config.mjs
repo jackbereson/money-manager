@@ -1,4 +1,4 @@
 import { defineConfig } from 'eslint/config';
 import nextVitals from 'eslint-config-next/core-web-vitals';
 import nextTs from 'eslint-config-next/typescript';
-export default defineConfig([...nextVitals, ...nextTs, { ignores: ['.next/**', 'next-env.d.ts'] }]);
+export default defineConfig([...nextVitals, ...nextTs, { ignores: ['.next/**', '.open-next/**', '.wrangler/**', '.scratch/**', 'cloudflare-env.d.ts', 'next-env.d.ts'] }]);

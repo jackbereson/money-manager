@@ -1,10 +1,16 @@
 import { MongoClient } from 'mongodb';
 import type { TransactionInput } from './transactions';
+import { databaseContext } from './database-context';
 
 const globalMongo = globalThis as typeof globalThis & { mongoPromise?: Promise<MongoClient> };
 export async function getDb() {
   const uri = process.env.MONGODB_URI;
   if (!uri) throw new Error('MongoDB chưa được cấu hình');
+  const scope = databaseContext.getStore();
+  if (scope) {
+    scope.client ??= new MongoClient(uri, { serverSelectionTimeoutMS: 10000, maxPoolSize: 2, minPoolSize: 0 }).connect();
+    return (await scope.client).db(process.env.MONGODB_DB || 'save_billion');
+  }
   if (!globalMongo.mongoPromise) {
     globalMongo.mongoPromise = new MongoClient(uri, { serverSelectionTimeoutMS: 5000 }).connect().catch(error => {
       globalMongo.mongoPromise = undefined;

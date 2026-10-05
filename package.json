@@ -8,7 +8,14 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test:integration": "node scripts/integration.mjs"
+    "test:integration": "node scripts/integration.mjs",
+    "cf:build": "node scripts/cloudflare-build.mjs",
+    "cf:preview": "opennextjs-cloudflare preview",
+    "cf:deploy": "node scripts/cloudflare-deploy.mjs",
+    "cf:login": "wrangler login --scopes account:read user:read workers:write workers_scripts:write workers_tail:read",
+    "cf:whoami": "wrangler whoami",
+    "cf:secrets": "node scripts/cloudflare-secrets.mjs",
+    "test:workers": "node scripts/integration-workers.mjs"
   },
   "keywords": [],
   "type": "module",
@@ -23,6 +30,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.8",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.4",
     "@types/react": "^19.3.0",
@@ -30,7 +38,8 @@
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.8",
     "tailwindcss": "^4.3.3",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "wrangler": "^4.147.0"
   },
   "private": true
 }

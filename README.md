@@ -71,6 +71,34 @@ Integration test tạo server ở cổng 3111 với secret tạm, dùng database
 
 `node scripts/visual-fixture.mjs` phục vụ kiểm tra giao diện có dữ liệu tổng hợp ở cổng 3112, database test và session test tạm trong `.scratch/ui-session.json`. Đây là script phát triển, không phải endpoint đăng nhập. Tạo `.scratch/stop-visual` để dừng server, xóa fixture và session file. Chỉ chạy khi MongoDB test trên localhost:27019 hoạt động.
 
+## Cloudflare Workers
+
+Ứng dụng dùng [OpenNext Cloudflare](https://opennext.js.org/cloudflare/get-started), giữ server/API và Google OAuth chạy trên Workers. Không dùng static export. Worker `money-manager` hiện public tại https://money-manager.jackbereson.workers.dev.
+
+```powershell
+npm ci
+npm run cf:login
+npm run cf:build
+npm run cf:preview -- --port 3113
+npm run test:workers
+npm run cf:deploy
+```
+
+`cf:build` hỗ trợ directory junction trên Windows và loại các giá trị `.env.local` khỏi Worker artifact. Runtime production lấy cấu hình từ Cloudflare secrets. Worker đóng MongoClient sau mỗi request/response stream vì TCP sockets của Workers không được chia sẻ giữa các request; Node local vẫn dùng connection pool. Các trang đăng nhập, dashboard và API dữ liệu cá nhân không dùng shared cache. Không cần R2 cho bản hiện tại.
+
+### Kích hoạt đăng nhập và dữ liệu production
+
+1. Copy `.env.cloudflare.example` thành `.env.cloudflare.local`. File này bị Git bỏ qua; điền credentials trực tiếp ở máy, không gửi qua chat.
+2. Tạo MongoDB Atlas cluster, database user chỉ có quyền đọc/ghi database `money_manager`, rồi lấy connection URI `mongodb+srv://...`. Thiết lập Atlas Network Access để Workers kết nối được; Workers thông thường không có một IP outbound cố định. Không dùng MongoDB localhost cho cloud.
+3. Trong Google Cloud Console, tạo OAuth client **Web application**, cấu hình consent screen và audience phù hợp. Origin: `https://money-manager.jackbereson.workers.dev`. Authorized redirect URI: `https://money-manager.jackbereson.workers.dev/api/auth/callback/google`. Nếu OAuth vẫn ở Testing, thêm email người dùng vào test users.
+4. Điền `MONGODB_URI`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, secret ngẫu nhiên tối thiểu 32 ký tự, `AUTH_URL` và `AUTH_ADMIN_EMAILS`. Email admin chỉ được áp dụng lúc đăng ký lần đầu; sau đó quản trị viên thay đổi role trong admin console.
+5. Chạy `npm run cf:secrets`, rồi `npm run cf:deploy`. Script kiểm tra cấu hình và ping MongoDB trước khi đưa secrets lên Cloudflare. Secrets được truyền qua stdin, không ghi vào repo hay command arguments.
+6. Kiểm tra đăng nhập Google thật, thêm giao dịch, đăng xuất/đăng nhập lại và dùng tài khoản member khác để xác nhận cách ly dữ liệu. Các integration test dùng phiên ký tổng hợp, không thay thế bước kiểm tra Google OAuth thật.
+
+Bản public chưa có Google OAuth/MongoDB Atlas sẽ hiện thông báo đăng nhập chưa được cấu hình và chặn dữ liệu. Nếu dùng custom domain, cập nhật `AUTH_URL` cùng Google origin/redirect URI tương ứng trước khi thử đăng nhập.
+
+Deploy giữ các runtime variables đã thiết lập trên dashboard bằng `--keep-vars`. Build production trên Cloudflare có thể dùng lệnh `npm run cf:build`, deploy command `npm run cf:deploy`, branch `main`, repo `jackbereson/money-manager`. Runtime secrets vẫn cần thiết lập riêng; không đưa chúng vào build variables vì ứng dụng không cần credentials lúc build.
+
 ## Phần phát triển tiếp theo
 
 - Giao dịch định kỳ với tạo giao dịch theo kỳ có chống trùng.
