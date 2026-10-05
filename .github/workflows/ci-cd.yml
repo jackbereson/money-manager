@@ -50,6 +50,8 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
       - name: Build Cloudflare Worker
         run: npm run cf:build
+      - name: Verify deployment blocks secret artifacts
+        run: node scripts/artifact-security-test.mjs
       - name: Check API permissions on Node.js
         run: npm run test:integration
       - name: Check API permissions on Workers

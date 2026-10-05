@@ -1,5 +1,6 @@
 import { loadEnvFile } from 'node:process';
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { MongoClient } from 'mongodb';
 
 try { loadEnvFile('.env.cloudflare.local'); }
@@ -21,7 +22,16 @@ try { await client.connect(); await client.db(process.env.MONGODB_DB).command({ 
 catch { console.error('Cannot connect to production MongoDB. Check credentials and Atlas Network Access.'); process.exitCode = 1; }
 finally { await client.close(); }
 if (process.exitCode) process.exit(process.exitCode);
-const secrets = Object.fromEntries(keys.map(key => [key, process.env[key]]));
+// These non-sensitive bindings already exist as vars in wrangler.jsonc;
+// Cloudflare rejects creating a secret with the same binding name.
+const configVars = JSON.parse(readFileSync('wrangler.jsonc', 'utf8')).vars || {};
+for (const key of keys.filter(key => key in configVars)) {
+  if (process.env[key] !== String(configVars[key])) {
+    console.error(`Configuration mismatch for ${key}. Update wrangler.jsonc before uploading secrets.`);
+    process.exit(1);
+  }
+}
+const secrets = Object.fromEntries(keys.filter(key => !(key in configVars)).map(key => [key, process.env[key]]));
 const result = spawnSync(process.execPath, ['node_modules/wrangler/bin/wrangler.js', 'secret', 'bulk'], {
   input: JSON.stringify(secrets), stdio: ['pipe', 'inherit', 'inherit'], env: process.env,
 });

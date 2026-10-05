@@ -14,6 +14,12 @@ async function verify() {
     } else await response.arrayBuffer();
     console.log(`PASS ${path} (${status})`);
   }
+  for (const path of ['/.env', '/.env.local', '/.env.cloudflare.local', '/key', '/.git/config', '/cloudflare/next-env.mjs']) {
+    const response = await fetch(`${base}${path}`, { redirect: 'manual', signal: AbortSignal.timeout(15000) });
+    assert.equal(response.status, 404, `${path}: sensitive path must return 404`);
+    await response.arrayBuffer();
+    console.log(`PASS private file ${path} (404)`);
+  }
 }
 for (let attempt = 1; attempt <= 5; attempt++) {
   try { await verify(); console.log(`Deployment verified: ${base}`); break; }
