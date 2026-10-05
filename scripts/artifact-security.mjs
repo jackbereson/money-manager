@@ -4,14 +4,18 @@ import { parseEnv } from 'node:util';
 
 export const emptyEnvArtifact = 'export const production = {};\nexport const development = {};\nexport const test = {};\n';
 
-export function localEnvironment() {
-  const values = {};
+function localEnvironmentRecords() {
+  const records = [];
   for (const name of readdirSync('.')) {
     if (name.startsWith('.env') && !name.endsWith('.example') && statSync(name).isFile()) {
-      Object.assign(values, parseEnv(readFileSync(name, 'utf8')));
+      records.push(parseEnv(readFileSync(name, 'utf8')));
     }
   }
-  return values;
+  return records;
+}
+
+export function localEnvironment() {
+  return Object.assign({}, ...localEnvironmentRecords());
 }
 
 export function removeCopiedEnvironmentFiles(directory = '.open-next') {
@@ -29,8 +33,10 @@ export function assertSafeArtifacts() {
     throw new Error('Deployment blocked: Worker environment artifact is not empty. Run npm run cf:build.');
   }
   const secrets = new Set();
-  for (const [key, value] of Object.entries({ ...localEnvironment(), ...process.env })) {
-    if (/(SECRET|PASSWORD|TOKEN|PRIVATE|MONGODB_URI|DATABASE_URL|API_KEY)/i.test(key) && value?.length >= 12) secrets.add(value);
+  for (const record of [...localEnvironmentRecords(), process.env]) {
+    for (const [key, value] of Object.entries(record)) {
+      if (/(SECRET|PASSWORD|TOKEN|PRIVATE|MONGODB_URI|DATABASE_URL|API_KEY)/i.test(key) && value?.length >= 12) secrets.add(value);
+    }
   }
   if (existsSync('key')) {
     const token = readFileSync('key', 'utf8').match(/Bearer\s+([A-Za-z0-9_-]+)/)?.[1];
