@@ -99,6 +99,28 @@ Bản public chưa có Google OAuth/MongoDB Atlas sẽ hiện thông báo đăng
 
 Deploy giữ các runtime variables đã thiết lập trên dashboard bằng `--keep-vars`. Build production trên Cloudflare có thể dùng lệnh `npm run cf:build`, deploy command `npm run cf:deploy`, branch `main`, repo `jackbereson/money-manager`. Runtime secrets vẫn cần thiết lập riêng; không đưa chúng vào build variables vì ứng dụng không cần credentials lúc build.
 
+## GitHub Actions CI/CD
+
+Workflow `.github/workflows/ci-cd.yml` chạy trên pull request vào `main`, khi push `main`, hoặc chạy tay ở GitHub Actions.
+
+- **Build and verify**: Node 24, `npm ci`, lint, typecheck, audit dependencies production, build OpenNext, rồi 37 kiểm tra API trên Node và 37 kiểm tra trên Workers. MongoDB service dùng database test riêng; không truy cập dữ liệu production.
+- **Deploy production**: chỉ chạy trên `main` sau khi toàn bộ CI pass. Build không nhận production secrets. Token deploy chỉ được đưa vào bước deploy, rồi kiểm tra public URL, redirect, manifest/icon và API chặn anonymous.
+- Pull request không deploy và không được cấp Cloudflare token. GitHub token của workflow chỉ có `contents: read`. Các GitHub Actions được cố định theo commit SHA.
+- Các lần chạy cùng ref được xếp hàng, tránh hủy giữa lúc deploy. Không tự ghi đè secrets Google/MongoDB đang lưu trên Worker.
+
+Cấu hình repo GitHub:
+
+| Loại | Tên | Giá trị |
+| --- | --- | --- |
+| Actions secret | `CLOUDFLARE_API_TOKEN` | Token riêng cho CI/CD, Workers Scripts Edit và Account Settings Read trong tài khoản Cloudflare đích |
+| Actions variable | `CLOUDFLARE_ACCOUNT_ID` | ID tài khoản Cloudflare đích |
+
+Token không cần quyền DNS, Pages, R2 hay MongoDB/Google. Quyền Workers Scripts của Cloudflare áp dụng ở cấp account; chỉ cấp cho tài khoản đích. Không dùng token OAuth đăng nhập local của Wrangler làm secret CI.
+
+Theo dõi ở https://github.com/jackbereson/money-manager/actions. Merge/push `main` sẽ tự kiểm tra và deploy. Muốn deploy lại commit hiện tại: mở workflow **CI / Cloudflare CD**, chọn **Run workflow** trên `main`. Nếu thiếu token, job deploy báo lỗi rõ tên secret cần thêm.
+
+Smoke test chỉ xác minh ứng dụng public và các cổng bảo vệ dữ liệu; đăng nhập Google thật vẫn cần hoàn tất credentials production như phần trên.
+
 ## Phần phát triển tiếp theo
 
 - Giao dịch định kỳ với tạo giao dịch theo kỳ có chống trùng.
