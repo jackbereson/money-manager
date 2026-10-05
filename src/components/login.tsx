@@ -1,0 +1,21 @@
+'use client';
+import { signIn } from 'next-auth/react';
+import { useState } from 'react';
+import { Sprout, ArrowUpRight, ShieldCheck, ChartNoAxesCombined, Wallet, Check, LoaderCircle } from 'lucide-react';
+
+export default function Login({ configured, hasError }: { configured: boolean; hasError: boolean }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(hasError ? 'Không thể đăng nhập. Hãy thử lại với tài khoản Google đã xác minh.' : '');
+  async function login() {
+    setBusy(true); setError('');
+    try { await signIn('google', { redirectTo: '/' }); }
+    catch { setError('Không thể bắt đầu đăng nhập. Vui lòng thử lại.'); setBusy(false); }
+  }
+  return <div className="login-page">
+    <header className="login-header"><div className="brand"><span className="brand-mark"><Sprout size={25} /></span><span>Sổ Thu Chi<span className="brand-sub">MỖI ĐỒNG ĐỀU CÓ Ý NGHĨA</span></span></div><span className="badge badge-outline gap-2 border-emerald-200 text-emerald-700"><ShieldCheck size={13} />Không gian riêng của bạn</span></header>
+    <main className="login-main"><section className="login-story"><span className="badge badge-soft badge-primary mb-6">TÍCH NHỎ, THÀNH LỚN</span><h1>Tài chính rõ ràng.<br /><span>Tương lai nhẹ nhàng.</span></h1><p>Một nơi để ghi lại thu chi, hiểu những thói quen nhỏ và dành nhiều hơn cho những điều bạn yêu.</p><div className="login-preview card bg-base-100 shadow-xl"><div className="flex items-center justify-between"><span className="text-xs text-base-content/50">MỘT THÓI QUEN NHỎ MỖI NGÀY</span><Sprout className="text-primary" size={22} /></div><h2 className="mt-5 text-2xl font-semibold">Vun đắp cho tương lai</h2><div className="preview-bars">{[36, 48, 42, 64, 59, 80, 94].map((height, i) => <div key={i} style={{ height: `${height}%` }} />)}</div><div className="flex items-center gap-2 text-xs text-emerald-700"><TrendingIcon />Bắt đầu từ việc hiểu mỗi đồng bạn chi.</div></div><div className="login-features"><span><Wallet size={16} />Thu chi gọn gàng</span><span><ChartNoAxesCombined size={16} />Báo cáo trực quan</span></div></section>
+      <section className="login-card card bg-base-100 shadow-sm border border-base-300"><div className="card-body"><span className="login-welcome-icon"><Sprout size={29} /></span><h2>Chào bạn,<br />bắt đầu cùng Sổ Thu Chi.</h2><p>Đăng nhập để mở sổ tài chính của riêng bạn.<br />Gọn gàng, riêng tư và luôn sẵn sàng.</p><button className="btn btn-lg google-button" disabled={!configured || busy} onClick={login}>{busy ? <LoaderCircle className="animate-spin" size={20} /> : <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#4285F4" d="M43.6 20.5H24v8h11.2c-1.1 5.1-5.6 8-11.2 8a12.5 12.5 0 1 1 0-25c3.1 0 5.9 1.1 8.1 3.1l5.7-5.7A20.5 20.5 0 1 0 24 44.5c11.8 0 20-8.3 20-20 0-1.4-.1-2.7-.4-4Z" /><path fill="#34A853" d="M24 44.5c5.8 0 10.7-1.9 14.2-5.3l-6.6-5.1c-2.1 1.5-4.6 2.4-7.6 2.4-5.6 0-10.4-3.8-12-9l-6.8 5.2A20.5 20.5 0 0 0 24 44.5Z" /><path fill="#FBBC05" d="M11.5 24c0-1.3.2-2.6.6-3.8l-6.8-5.3a20.5 20.5 0 0 0 0 18.2l6.8-5.3c-.4-1.2-.6-2.5-.6-3.8Z" /><path fill="#EA4335" d="M24 11.5c3.1 0 5.9 1.1 8.1 3.1l5.7-5.7A20.5 20.5 0 0 0 5.3 14.9l6.8 5.3c1.6-5 6.4-8.7 11.9-8.7Z" /></svg>}{busy ? 'Đang chuyển đến Google…' : 'Tiếp tục với Google'}<ArrowUpRight size={17} /></button>{!configured && <div className="alert alert-soft mt-3 text-xs" role="status">Đăng nhập Google chưa được cấu hình. Quản trị viên cần hoàn tất thiết lập trước khi sử dụng.</div>}{error && <div className="alert alert-error alert-soft mt-3 text-xs" role="alert">{error}</div>}<div className="divider text-xs text-base-content/35">KHÔNG GIAN CÁ NHÂN</div><ul className="login-checks"><li><Check size={15} />Sổ thu chi riêng cho từng tài khoản</li><li><Check size={15} />Lưu trữ và đồng bộ khi đăng nhập</li><li><Check size={15} />Không cần tạo hay nhớ mật khẩu mới</li></ul><div className="login-privacy"><ShieldCheck size={16} /><span>Đăng nhập qua Google. Ứng dụng không truy cập Gmail, Drive hoặc thông tin thanh toán.</span></div></div></section>
+    </main><footer className="login-footer">Chăm chút tài chính, vun đắp tương lai. <span>Sổ Thu Chi © 2026</span></footer>
+  </div>;
+}
+function TrendingIcon() { return <ChartNoAxesCombined size={15} />; }
