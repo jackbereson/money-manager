@@ -5,6 +5,7 @@ node_modules/
 !.env.cloudflare.example
 *.tsbuildinfo
 .scratch/
+key
 .open-next/
 .wrangler/
 .dev.vars*
