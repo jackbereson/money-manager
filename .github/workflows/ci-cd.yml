@@ -1,19 +1,12 @@
-name: CI / Cloudflare CD
-
+name: CI / Render CD
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: read
-
-concurrency:
-  group: ci-cd-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
   verify:
     name: Build and verify
@@ -22,74 +15,28 @@ jobs:
     services:
       mongodb:
         image: mongo:8
-        ports:
-          - 27019:27017
+        ports: [27019:27017]
         options: >-
           --health-cmd "mongosh --quiet --eval 'db.adminCommand({ping:1})'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
+          --health-interval 10s --health-timeout 5s --health-retries 10
     env:
       NEXT_TELEMETRY_DISABLED: '1'
-      WRANGLER_SEND_METRICS: 'false'
       MONGODB_TEST_URI: mongodb://127.0.0.1:27019
       MONGODB_TEST_DB: money_manager_ci_test
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with:
           node-version: '24'
           cache: npm
-      - name: Install dependencies
-        run: npm ci
-      - name: Lint
-        run: npm run lint
-      - name: Typecheck
-        run: npm run typecheck
-      - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
-      - name: Build Cloudflare Worker
-        run: npm run cf:build
-      - name: Verify deployment blocks secret artifacts
-        run: node scripts/artifact-security-test.mjs
-      - name: Check API permissions on Node.js
-        run: npm run test:integration
-      - name: Check API permissions on Workers
-        run: npm run test:workers
-
-  deploy:
-    name: Deploy production
-    needs: verify
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    environment:
-      name: production
-      url: https://money-manager.jackbereson.workers.dev
-    env:
-      NEXT_TELEMETRY_DISABLED: '1'
-      WRANGLER_SEND_METRICS: 'false'
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
-        with:
-          node-version: '24'
-          cache: npm
-      - name: Check deployment configuration
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          test -n "$CLOUDFLARE_API_TOKEN" || { echo "Missing GitHub secret CLOUDFLARE_API_TOKEN"; exit 1; }
-          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "Missing GitHub variable CLOUDFLARE_ACCOUNT_ID"; exit 1; }
-      - name: Install dependencies
-        run: npm ci
-      - name: Build production Worker
-        run: npm run cf:build
-      - name: Deploy to Cloudflare
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-        run: npm run cf:deploy
-      - name: Verify public deployment
-        run: node scripts/deployment-smoke.mjs
+          cache-dependency-path: |
+            package-lock.json
+            backend/package-lock.json
+      - run: npm ci && npm --prefix backend ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm audit --omit=dev --audit-level=high && npm --prefix backend audit --omit=dev --audit-level=high
+      - run: npm run build:all
+      - run: node scripts/artifact-security-test.mjs
+      - run: npm run test:integration
+# Render auto-deploys main only after these checks pass (configured in Dashboard).

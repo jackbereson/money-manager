@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongodb';
-import { currentUser, invalidOrigin, privateJson as json } from './access';
-import { getTransactions, getUsers } from './mongodb';
-import { transactionSchema } from './transactions';
+import { currentUser, invalidOrigin, privateJson as json } from './access.js';
+import { getTransactions, getUsers } from './mongodb.js';
+import { transactionSchema } from './transactions.js';
 
 export function transactionHandlers(admin = false) {
   async function handle(request: Request, method: 'GET' | 'POST' | 'PATCH' | 'DELETE') {

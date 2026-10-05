@@ -1,16 +1,10 @@
 import { MongoClient } from 'mongodb';
-import type { TransactionInput } from './transactions';
-import { databaseContext } from './database-context';
+import type { TransactionInput } from './transactions.js';
 
 const globalMongo = globalThis as typeof globalThis & { mongoPromise?: Promise<MongoClient> };
 export async function getDb() {
   const uri = process.env.MONGODB_URI;
   if (!uri) throw new Error('MongoDB chưa được cấu hình');
-  const scope = databaseContext.getStore();
-  if (scope) {
-    scope.client ??= new MongoClient(uri, { serverSelectionTimeoutMS: 10000, maxPoolSize: 2, minPoolSize: 0 }).connect();
-    return (await scope.client).db(process.env.MONGODB_DB || 'save_billion');
-  }
   if (!globalMongo.mongoPromise) {
     globalMongo.mongoPromise = new MongoClient(uri, { serverSelectionTimeoutMS: 5000 }).connect().catch(error => {
       globalMongo.mongoPromise = undefined;
@@ -33,5 +27,15 @@ export async function getUsers() {
   const collection = (await getDb()).collection<AppUser>('users');
   userIndex ??= collection.createIndex({ ownerId: 1 }, { unique: true }).catch(error => { userIndex = undefined; throw error; });
   await userIndex;
+  return collection;
+}
+let sessionIndexes: Promise<unknown> | undefined;
+export async function getSessions() {
+  const collection = (await getDb()).collection<{ sid: string; ownerId: string; expiresAt: Date }>('sessions');
+  sessionIndexes ??= Promise.all([
+    collection.createIndex({ sid: 1 }, { unique: true }),
+    collection.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
+  ]).catch(error => { sessionIndexes = undefined; throw error; });
+  await sessionIndexes;
   return collection;
 }

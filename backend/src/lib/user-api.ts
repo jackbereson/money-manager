@@ -1,8 +1,6 @@
-import { currentUser, invalidOrigin, privateJson as json } from '@/lib/access';
-import { getUsers, getTransactions } from '@/lib/mongodb';
+import { currentUser, invalidOrigin, privateJson as json } from './access.js';
+import { getUsers, getTransactions } from './mongodb.js';
 import { z } from 'zod';
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const user = await currentUser();

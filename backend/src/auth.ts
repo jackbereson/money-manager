@@ -1,10 +1,13 @@
-import NextAuth from 'next-auth';
-import Google from 'next-auth/providers/google';
-import { getUsers } from '@/lib/mongodb';
+import { Auth, type AuthConfig } from '@auth/core';
+import Google from '@auth/core/providers/google';
+import { getUsers, getSessions } from './lib/mongodb.js';
+import { randomUUID } from 'node:crypto';
 
 export const authConfigured = () => Boolean(process.env.AUTH_SECRET && process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
-export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
-  providers: [Google({ authorization: { params: { prompt: 'select_account', scope: 'openid email profile' } } })],
+export const authConfig = (): AuthConfig => ({
+  secret: process.env.AUTH_SECRET, trustHost: true, basePath: '/api/auth',
+  logger: { error(error) { console.error(`Authentication error: ${error.name}`); } },
+  providers: [Google({ clientId: process.env.AUTH_GOOGLE_ID, clientSecret: process.env.AUTH_GOOGLE_SECRET, checks: ['pkce', 'state'], authorization: { params: { prompt: 'select_account', scope: 'openid email profile' } } })],
   session: { strategy: 'jwt', maxAge: 7 * 24 * 60 * 60 },
   pages: { signIn: '/login', error: '/login' },
   callbacks: {
@@ -23,13 +26,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
         return (await users.findOne({ ownerId }))?.status === 'active';
       } catch { return false; }
     },
-    jwt({ token, account }) {
-      if (account?.provider === 'google') token.ownerId = `google:${account.providerAccountId}`;
+    async jwt({ token, account }) {
+      if (account?.provider === 'google') {
+        token.ownerId = `google:${account.providerAccountId}`;
+        token.sid = randomUUID();
+        await (await getSessions()).insertOne({ sid: token.sid as string, ownerId: token.ownerId as string, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) });
+      }
       return token;
     },
     session({ session, token }) {
       if (session.user && typeof token.ownerId === 'string') session.user.id = token.ownerId;
+      if (typeof token.sid === 'string') session.sid = token.sid;
       return session;
     },
   },
-}));
+  events: {
+    async signOut(message) {
+      if ('token' in message && typeof message.token?.sid === 'string') {
+        await (await getSessions()).deleteOne({ sid: message.token.sid });
+      }
+    },
+  },
+});
+
+export const handleAuth = (request: Request) => Auth(request, authConfig());

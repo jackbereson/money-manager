@@ -7,9 +7,9 @@ const previousSecret = process.env.ARTIFACT_TEST_SECRET;
 process.env.ARTIFACT_TEST_SECRET = canary;
 try {
   for (const [path, content, expected] of [
-    ['.open-next/assets/__security_canary.txt', canary, /secret detected/],
-    ['.open-next/assets/.env.security-canary', 'NOT_A_REAL_SECRET=true', /credential file/],
-    ['.open-next/assets/__security_canary.map', '{}', /public source map/],
+    ['out/__security_canary.txt', canary, /secret detected/],
+    ['out/.env.security-canary', 'NOT_A_REAL_SECRET=true', /credential file/],
+    ['out/__security_canary.map', '{}', /public source map/],
   ]) {
     assert.equal(existsSync(path), false, 'Do not overwrite existing artifacts');
     try {

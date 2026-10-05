@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: money-manager
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm ci && npm --prefix backend ci && npm run build:all
+    startCommand: npm --prefix backend start
+    healthCheckPath: /health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+      - key: NODE_ENV
+        value: production
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: AUTH_URL
+        sync: false
+      - key: AUTH_GOOGLE_ID
+        sync: false
+      - key: AUTH_GOOGLE_SECRET
+        sync: false
+      - key: AUTH_ADMIN_EMAILS
+        value: jackbereson@gmail.com
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB
+        value: money_manager

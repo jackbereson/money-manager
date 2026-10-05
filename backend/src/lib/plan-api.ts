@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongodb';
-import { currentUser, invalidOrigin, privateJson as json } from './access';
-import { getDb, getUsers } from './mongodb';
-import { planSchema, type PlanInput } from './plans';
+import { currentUser, invalidOrigin, privateJson as json } from './access.js';
+import { getDb, getUsers } from './mongodb.js';
+import { planSchema, type PlanInput } from './plans.js';
 let indexPromise: Promise<string> | undefined;
 export function planHandlers(admin = false) {
   async function handle(request: Request, method: 'GET' | 'POST' | 'PATCH' | 'DELETE') {
