@@ -1,0 +1,13 @@
+.animated-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; vertical-align: middle; pointer-events: none; }
+.animated-icon picture, .animated-icon img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.nav-item > .animated-icon { margin: -4px; }
+.mobile-dock .animated-icon { margin-block: -3px; }
+.icon-bubble:has(.animated-icon) { width: 38px; height: 38px; }
+.balance-card .animated-icon { padding: 3px; border-radius: 10px; background: #ffffffed; }
+.icon-credits { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 12px; color: #796486; }
+.icon-credits a { text-decoration: underline; text-underline-offset: 3px; }
+.icon-credits ul { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; padding: 0; list-style: none; }
+@media (max-width: 767px) {
+  .profile-page .icon-credits { font-size: 13px; line-height: 1.7; color: #796486; }
+  .profile-page .icon-credits p { font-size: inherit; color: inherit; }
+}
