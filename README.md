@@ -1,16 +1,18 @@
 # Sổ Thu Chi · Money Quest
 
-Frontend Next.js 16 + React + TypeScript + Tailwind CSS + DaisyUI, **static export / client-side rendering**. Backend NestJS 11 + TypeScript + MongoDB + Google SSO. Không còn OpenNext hoặc Cloudflare Workers trong luồng build/deploy.
+Frontend Next.js 16 + React + TypeScript + Tailwind CSS + DaisyUI, **static export / client-side rendering trên Cloudflare**. Backend NestJS 11 + TypeScript trên Render + MongoDB + Google SSO. Không dùng OpenNext hay Next.js server trên Cloudflare.
 
 ## Kiến trúc
 
 ```text
-Browser → Render HTTPS
+Browser → Cloudflare HTTPS
              ├─ /, /login, /admin, /_next: static Next.js (out/)
-             └─ /api: NestJS → MongoDB Atlas Free, Singapore
+             └─ /api: proxy → Render NestJS → MongoDB Atlas Free, Singapore
 ```
 
-`src/` chứa frontend, `backend/src/` chứa API, authentication và quyền dữ liệu. Hai app build riêng; NestJS phục vụ `out/` cùng domain để cookie không bị chặn như cookie bên thứ ba. Trang admin có thể tải giao diện công khai; dữ liệu và mọi thao tác chỉ được backend cho phép sau xác thực. Không đưa secrets vào frontend.
+`src/` chứa frontend, `backend/src/` chứa API, authentication và quyền dữ liệu. Cloudflare phục vụ `out/`; gateway nhỏ chỉ chuyển `/api` sang Render để cookie cùng domain với giao diện. Tất cả logic, Google credentials, AUTH_SECRET và MongoDB nằm trên Render. Trang admin có thể tải giao diện công khai; dữ liệu và mọi thao tác chỉ được backend cho phép sau xác thực.
+
+Web: https://money-manager.jackbereson.workers.dev. Backend: https://money-manager-ehqs.onrender.com. Trên Render đặt AUTH_URL=https://money-manager.jackbereson.workers.dev; callback Google là AUTH_URL + /api/auth/callback/google. GitHub Actions deploy frontend sau khi verify thành công. `wrangler.jsonc` chỉ upload static export và gateway; không upload backend hoặc dotenv.
 
 ## Chạy local
 
