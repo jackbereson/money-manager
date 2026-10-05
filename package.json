@@ -1,42 +1,26 @@
 {
-  "name": "save-billion",
-  "version": "1.0.0",
-  "description": "Ứng dụng quản lý thu chi cá nhân",
-  "scripts": {
-    "dev": "npm --prefix backend run dev",
-    "build": "node scripts/static-build.mjs",
-    "start": "npm --prefix backend start",
-    "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
-    "test:integration": "node scripts/integration.mjs",
-    "backend:build": "npm --prefix backend run build",
-    "backend:dev": "npm --prefix backend run dev",
-    "backend:start": "npm --prefix backend start",
-    "build:all": "npm run build && npm run backend:build",
-    "dev:ui": "next dev"
-  },
-  "keywords": [],
+  "name": "money-manager",
+  "private": true,
   "type": "module",
-  "dependencies": {
-    "daisyui": "^5.7.47",
-    "lucide-react": "^1.52.0",
-    "next": "^16.3.8",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
-    "zod": "^4.6.5"
+  "workspaces": [
+    "webapp"
+  ],
+  "scripts": {
+    "dev": "npm --prefix core run dev",
+    "build": "npm --prefix webapp run build",
+    "start": "npm --prefix core start",
+    "lint": "eslint .",
+    "typecheck": "npm --prefix webapp run typecheck",
+    "test:integration": "node scripts/integration.mjs",
+    "backend:build": "npm --prefix core run build",
+    "backend:dev": "npm --prefix core run dev",
+    "backend:start": "npm --prefix core start",
+    "build:all": "npm run build && npm run backend:build",
+    "dev:ui": "npm --prefix webapp run dev"
   },
   "devDependencies": {
-    "@auth/core": "^0.41.3",
-    "@tailwindcss/postcss": "^4.3.3",
-    "@types/node": "^26.6.4",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.8",
-    "mongodb": "^7.7.0",
-    "tailwindcss": "^4.3.3",
-    "typescript": "^6.0.3",
-    "wrangler": "^4.147.0"
-  },
-  "private": true
+    "typescript": "^6.0.3"
+  }
 }

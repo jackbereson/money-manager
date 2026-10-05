@@ -27,7 +27,7 @@ try {
   await db.collection('users').insertMany(ownerIds.map((ownerId, i) => ({ ownerId, name: ['Alice Test', 'Bob Test', 'Admin Test'][i], email: `integration-${i}@example.invalid`, image: '', role: i === 2 ? 'admin' : 'member', status: 'active', createdAt: new Date(), lastLoginAt: new Date() })));
   await db.collection('sessions').insertMany(ownerIds.map(ownerId => ({ sid: ownerId, ownerId, expiresAt: new Date(Date.now() + 3600000) })));
   const testEnv = { MONGODB_URI: uri, MONGODB_DB: database, AUTH_SECRET: secret, AUTH_URL: base, AUTH_GOOGLE_ID: 'integration-only', AUTH_GOOGLE_SECRET: 'integration-only', AUTH_TRUST_HOST: 'true' };
-  const serverArgs = ['backend/dist/main.js'];
+  const serverArgs = ['core/dist/main.js'];
   server = spawn(process.execPath, serverArgs, { env: { ...process.env, NODE_ENV: 'production', ...testEnv, PORT: port }, stdio: ['ignore', 'ignore', 'pipe'], windowsHide: true });
   let serverErrors = '';
   server.stderr.on('data', data => { serverErrors = (serverErrors + data.toString()).slice(-2500); });
@@ -35,7 +35,7 @@ try {
   for (let i = 0; i < 100; i++) { try { const response = await fetch(`${base}/api/auth/session`); if (response.ok) { ready = true; break; } } catch {} await new Promise(resolve => setTimeout(resolve, 200)); }
   assert.ok(ready, `Test server unavailable: ${serverErrors}`);
   const loginHtml = await (await fetch(`${base}/login`)).text();
-  check(loginHtml.includes('Đang mở sổ thu chi'), 'Static login shell renders without server secrets');
+  for (const path of ['/', '/login', '/admin', '/_next/static/test.js', '/icon.svg']) check((await fetch(`${base}${path}`)).status === 404, `Backend never serves frontend: ${path}`);
   check(!loginHtml.includes(secret), 'Static HTML never includes authentication secret');
   const csrf = await fetch(`${base}/api/auth/csrf`);
   const { csrfToken } = await csrf.json();
@@ -95,7 +95,7 @@ try {
   const logout = await fetch(`${base}/api/auth/signout`, { method: 'POST', headers: { cookie: `${cookies[2]}; ${csrfCookies}`, origin: base, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ csrfToken, callbackUrl: `${base}/login` }), redirect: 'manual' });
   check(logout.status === 302, 'Logout clears the authentication cookie');
   check((await api('/api/me', 2)).status === 401, 'Logout revokes copied JWT server-side');
-  for (const path of ['/.env', '/backend/.env', '/key', '/.git/config', '/backend/src/main.ts', '/package.json']) check((await fetch(`${base}${path}`)).status === 404, `Private source blocked: ${path}`);
+  for (const path of ['/.env', '/core/.env', '/key', '/.git/config', '/core/src/main.ts', '/package.json']) check((await fetch(`${base}${path}`)).status === 404, `Private source blocked: ${path}`);
   console.log(`\n${checks} integration checks passed (NestJS + static Next.js).`);
 } finally {
   if (server) {

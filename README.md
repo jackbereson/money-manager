@@ -1,67 +1,77 @@
 # Sổ Thu Chi · Money Quest
 
-Frontend Next.js 16 + React + TypeScript + Tailwind CSS + DaisyUI, **static export / client-side rendering trên Cloudflare**. Backend NestJS 11 + TypeScript trên Render + MongoDB + Google SSO. Không dùng OpenNext hay Next.js server trên Cloudflare.
+Frontend Next.js + TypeScript + Tailwind CSS + DaisyUI trên Cloudflare Static Assets. Backend NestJS + TypeScript trên Render, MongoDB Atlas và Google SSO.
 
-## Kiến trúc
+## Hai source riêng trong cùng repository
+
+- `webapp/`: giao diện, public assets, Next.js static export, cấu hình Cloudflare. Output `webapp/out/`.
+- `core/`: NestJS API, authentication, phân quyền, MongoDB. Có package và lockfile riêng; không phụ thuộc Next.js hoặc frontend.
+- `scripts/`: build, kiểm tra bảo mật, integration và deployment verification.
 
 ```text
 Browser → Cloudflare HTTPS
-             ├─ /, /login, /admin, /_next: static Next.js (out/)
-             └─ /api: proxy → Render NestJS → MongoDB Atlas Free, Singapore
+             ├─ /, /login, /admin, /_next → static webapp
+             └─ /api → gateway → Render core → MongoDB Atlas Singapore
 ```
 
-`src/` chứa frontend, `backend/src/` chứa API, authentication và quyền dữ liệu. Cloudflare phục vụ `out/`; gateway nhỏ chỉ chuyển `/api` sang Render để cookie cùng domain với giao diện. Tất cả logic, Google credentials, AUTH_SECRET và MongoDB nằm trên Render. Trang admin có thể tải giao diện công khai; dữ liệu và mọi thao tác chỉ được backend cho phép sau xác thực.
+Web: https://money-manager.jackbereson.workers.dev
 
-Web: https://money-manager.jackbereson.workers.dev. Backend: https://money-manager-ehqs.onrender.com. Trên Render đặt AUTH_URL=https://money-manager.jackbereson.workers.dev; callback Google là AUTH_URL + /api/auth/callback/google. GitHub Actions deploy frontend sau khi verify thành công. `wrangler.jsonc` chỉ upload static export và gateway; không upload backend hoặc dotenv.
+Render chỉ phục vụ API; `/`, `/login`, `/admin` và static assets trả 404. Cloudflare gateway chỉ chuyển `/api` đến backend cố định, giúp cookie đăng nhập cùng domain với giao diện. Không dùng OpenNext hay Next.js server trên Cloudflare.
 
-## Chạy local
+## CI/CD từ GitHub Actions
+
+Workflow `.github/workflows/ci-cd.yml` chạy khi push `main`, pull request hoặc manual dispatch.
+
+1. CI chạy lint, typecheck, production dependency audit, build hai app, kiểm tra artifact không chứa secrets/source maps, proxy tests và integration với MongoDB test riêng.
+2. Sau CI thành công, job frontend deploy `webapp/out/` và gateway lên Cloudflare.
+3. Sau CI thành công, job backend gọi Render deploy hook với SHA chính xác của commit đã kiểm tra.
+4. Job backend chờ `/health` trả đúng revision, `/ready` xác nhận MongoDB, và kiểm tra các URL frontend/source trả 404. Deploy lỗi làm workflow thất bại.
+
+Pull request chỉ chạy CI. Runtime secrets Google/MongoDB chỉ nằm trên Render, không cần đưa vào GitHub hay frontend build. Auto-Deploy Render đặt **Off**; GitHub Actions điều phối deployment.
+
+GitHub repository secrets: `CLOUDFLARE_API_TOKEN`, `RENDER_DEPLOY_HOOK`.
+Repository variable: `CLOUDFLARE_ACCOUNT_ID`.
+
+Render service settings (`render.yaml`):
+
+- Repository `jackbereson/money-manager`, branch `main`, root directory **core**.
+- Build `npm ci && npm run build`; start `npm start`; Node 24.
+- Auto-Deploy **Off**; health check `/health`.
+- Runtime environment: `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_URL`, `AUTH_ADMIN_EMAILS`, `MONGODB_URI`, `MONGODB_DB`.
+- `AUTH_URL=https://money-manager.jackbereson.workers.dev`.
+- Google redirect `https://money-manager.jackbereson.workers.dev/api/auth/callback/google`.
+
+Atlas chỉ cho phép outbound CIDR của Render service: `74.220.52.0/24`, `74.220.60.0/24`; không mở `0.0.0.0/0`. `/ready` trả 503 nếu database chưa sẵn sàng, không trả credentials. Render Free có thể ngủ khi không có traffic.
+
+## Chạy và kiểm tra local
 
 ```powershell
 npm ci
-npm --prefix backend ci
+npm --prefix core ci
 docker compose up -d
-Copy-Item backend/.env.example backend/.env
-# Điền Google credentials và AUTH_SECRET ngẫu nhiên ít nhất 32 ký tự.
+Copy-Item core/.env.example core/.env
+# Điền credentials local, AUTH_SECRET và MongoDB.
 npm run build:all
 npm start
 ```
 
-Mặc định http://localhost:3200. Google OAuth redirect: `http://localhost:3200/api/auth/callback/google`. `AUTH_URL` phải khớp domain/cổng đang dùng. Sửa frontend: build lại; `npm run dev:ui` chỉ xem UI, không cung cấp API. Backend reload với `npm run backend:dev`. MongoDB local chỉ mở trên 127.0.0.1:27019. `.env`, `backend/.env`, `key` đều bị Git ignore.
-
-## Authentication và quyền
-
-- Google OAuth: chỉ `openid email profile`, verified email, PKCE + state và chống CSRF.
-- Session là JWT **mã hóa JWE** của Auth.js, cookie HttpOnly, Secure trên HTTPS, SameSite=Lax; không lưu token trong localStorage/sessionStorage.
-- Auth.js dùng HKDF với secret và salt tên cookie để tạo khóa mã hóa. App không nhận/lưu mật khẩu vì dùng Google SSO; không thêm hash/salt/pepper mật khẩu giả.
-- Session có ID ngẫu nhiên và record MongoDB với TTL 7 ngày. Backend kiểm tra session, trạng thái user và role ở mỗi request. Logout thu hồi session, kể cả bản sao JWT; khóa user/đổi role có hiệu lực ngay.
-- Member CRUD và xuất dữ liệu cá nhân; ownerId lấy từ session, bỏ qua owner/role giả trong payload. Admin quản trị mọi user/giao dịch/kế hoạch và có dashboard cá nhân riêng.
-- `AUTH_ADMIN_EMAILS=jackbereson@gmail.com` cấp admin cho email Google đã xác minh; admin không tự khóa/hạ quyền tài khoản đang dùng.
-- Validate payload, mutation kiểm tra Origin, giới hạn request body 256 KB, rate limit 300 request/phút/IP qua Render proxy.
-- Chỉ `out/` được phục vụ công khai. Build chặn secret/env/source map/symlink trong static artifacts. Không serve source, backend/dist, dotenv hoặc Git.
-
-## Deploy Render Free, Singapore
-
-`render.yaml` mô tả một Web Service miễn phí. Trong Dashboard:
-
-- Repo: jackbereson/money-manager, branch main; root directory để trống.
-- Build: `npm ci && npm --prefix backend ci && npm run build:all`.
-- Start: `npm --prefix backend start`; Node 24; health check `/health`.
-- Secrets runtime: AUTH_SECRET, AUTH_GOOGLE_ID, AUTH_GOOGLE_SECRET, AUTH_URL, AUTH_ADMIN_EMAILS, MONGODB_URI, MONGODB_DB. Không commit giá trị thật.
-- Google redirect: `<AUTH_URL>/api/auth/callback/google` và origin tương ứng.
-- Connect → Outbound: lấy các CIDR của chính service, thêm vào Atlas Network Access. Không dùng IP của domain inbound hoặc 0.0.0.0/0. Render dùng chung các dải IP theo vùng, nên xác thực MongoDB vẫn bắt buộc.
-- `/health`: tiến trình đang chạy. `/ready`: kiểm tra kết nối MongoDB, 503 nếu chưa sẵn sàng; không trả lỗi chứa credentials.
-- GitHub CI chạy lint/typecheck, production dependency audit, build cả hai app, chống secret artifacts, và integration permissions. Render Blueprint/Git integration có thể auto-deploy sau checksPass; public repo deploy qua deploy hook sau CI.
-
-Render Free ngủ sau 15 phút không có traffic; lần gọi tiếp theo có thể mất khoảng một phút. Dữ liệu lưu Atlas, không dùng filesystem Render để lưu giao dịch.
-
-## Kiểm tra
+API local ở `http://localhost:3200`. `npm run backend:dev` reload API. `npm run dev:ui` xem giao diện Next.js development; backend không phục vụ giao diện. Production truy cập qua Cloudflare gateway.
 
 ```powershell
 npm run lint
 npm run typecheck
 npm run build:all
 node scripts/artifact-security-test.mjs
+node scripts/frontend-proxy-test.mjs
 npm run test:integration
 ```
 
-Integration dùng database `_test` và session tổng hợp, không có endpoint login test trong ứng dụng. Kiểm tra isolation/CRUD, roles/blocking, forged/expired JWT, CSRF, PKCE/state, logout revocation và private file URLs. Kiểm tra Google SSO thật cần callback đã đăng ký và credentials runtime.
+Integration dùng database `_test`, kiểm tra owner isolation, CRUD, role/blocking, forged/expired JWT, CSRF, PKCE/state, logout revocation và API-only routes. Google SSO thật cần OAuth client và callback đã đăng ký.
+
+## Authentication và bảo mật
+
+Google OAuth dùng verified email, PKCE, state, CSRF. Session JWT mã hóa JWE, cookie HttpOnly/Secure/SameSite=Lax; không lưu token trong localStorage. MongoDB session có TTL 7 ngày; backend kiểm tra session, user và role mỗi request. Logout thu hồi session; khóa user/đổi role có hiệu lực ngay.
+
+Member chỉ xem và sửa dữ liệu cá nhân; owner lấy từ session. Admin quản trị user/dữ liệu hệ thống và dùng dashboard cá nhân. `AUTH_ADMIN_EMAILS=jackbereson@gmail.com` cấp admin cho email Google đã xác minh.
+
+Dotenv thật, `key`, deploy hook và build directories đều bị Git ignore. Chỉ static artifacts được upload Cloudflare; build chặn credentials, dotenv, symlink và source maps. HTML/JS/CSS của giao diện phải tải xuống trình duyệt để chạy; bí mật và quyền truy cập được bảo vệ ở backend.

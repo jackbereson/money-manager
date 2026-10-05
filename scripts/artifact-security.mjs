@@ -1,10 +1,13 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { parseEnv } from 'node:util';
+import { fileURLToPath } from 'node:url';
+const projectRoot = fileURLToPath(new URL('../', import.meta.url));
+const artifactRoots = ['webapp/public', 'webapp/out'];
 
 function localEnvironmentRecords() {
   const records = [];
-  for (const name of [...readdirSync('.'), ...readdirSync('backend').map(name => join('backend', name))]) {
+  for (const name of ['.', 'core', 'webapp'].flatMap(directory => readdirSync(join(projectRoot, directory)).map(name => join(projectRoot, directory, name)))) {
     if (name.split(/[\\/]/).pop().startsWith('.env') && !name.endsWith('.example') && statSync(name).isFile()) {
       records.push(parseEnv(readFileSync(name, 'utf8')));
     }
@@ -17,15 +20,15 @@ export function localEnvironment() {
 }
 
 export function assertSafeArtifacts() {
-  if (!existsSync('out/index.html')) throw new Error('Build the static frontend before scanning artifacts.');
+  if (!existsSync(join(projectRoot, 'webapp/out/index.html'))) throw new Error('Build the static frontend before scanning artifacts.');
   const secrets = new Set();
   for (const record of [...localEnvironmentRecords(), process.env]) {
     for (const [key, value] of Object.entries(record)) {
       if (/(SECRET|PASSWORD|TOKEN|PRIVATE|MONGODB_URI|DATABASE_URL|API_KEY)/i.test(key) && value?.length >= 12) secrets.add(value);
     }
   }
-  if (existsSync('key')) {
-    const keyContent = readFileSync('key', 'utf8');
+  if (existsSync(join(projectRoot, 'key'))) {
+    const keyContent = readFileSync(join(projectRoot, 'key'), 'utf8');
     const token = keyContent.match(/Bearer\s+([A-Za-z0-9_-]+)/)?.[1];
     if (token) secrets.add(token);
     for (const line of keyContent.split(/\r?\n/).map(value => value.trim()).filter(value => value && !/curl|Bearer/i.test(value))) {
@@ -47,10 +50,10 @@ export function assertSafeArtifacts() {
         // Never print the matching value or file contents.
         throw new Error(`Deployment blocked: secret detected in ${path}`);
       }
-      if ((root === 'public' || root === 'out') && /\.map$/i.test(relative(root, path))) throw new Error(`Deployment blocked: public source map at ${path}`);
+      if (/\.map$/i.test(relative(root, path))) throw new Error(`Deployment blocked: public source map at ${path}`);
       files++;
     }
   }
-  for (const root of ['public', 'out']) if (existsSync(root)) inspect(root);
+  for (const directory of artifactRoots) { const root = join(projectRoot, directory); if (existsSync(root)) inspect(root); }
   console.log(`Artifact security check passed (${files} files; no credentials or known secret values).`);
 }

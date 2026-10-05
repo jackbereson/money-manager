@@ -14,7 +14,7 @@ const frontend = {
         redirect: 'manual' }));
     }
     // Only compiled frontend assets are deployed. No Next.js server or credentials.
-    if (/^\/(?:\.env|\.git|key(?:\/|$)|backend\/|cloudflare\/)/i.test(url.pathname)) {
+    if (/^\/(?:\.env|\.git|key(?:\/|$)|(?:backend|core|webapp)\/|cloudflare\/)/i.test(url.pathname)) {
       return new Response('Not found', { status: 404 });
     }
     return env.ASSETS.fetch(request);

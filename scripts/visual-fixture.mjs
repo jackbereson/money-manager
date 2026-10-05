@@ -3,7 +3,7 @@ import { encode } from '@auth/core/jwt';
 import { spawn } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
-import { demoTransactions, transactionSchema } from '../src/lib/transactions.ts';
+import { demoTransactions, transactionSchema } from '../webapp/src/lib/transactions.ts';
 
 const client = await new MongoClient('mongodb://127.0.0.1:27019').connect();
 const db = client.db('save_billion_test');
@@ -18,7 +18,7 @@ await db.collection('sessions').insertOne({ sid: ownerId, ownerId, expiresAt: ne
 const token = await encode({ secret, salt: 'authjs.session-token', token: { ownerId, sid: ownerId, sub: ownerId, name: 'Minh Anh · Test UI' }, maxAge: 3600 });
 fs.mkdirSync('.scratch', { recursive: true });
 fs.writeFileSync('.scratch/ui-session.json', JSON.stringify({ base, token }));
-const server = spawn(process.execPath, ['backend/dist/main.js'], { env: { ...process.env, NODE_ENV: 'production', PORT: '3112', MONGODB_URI: 'mongodb://127.0.0.1:27019', MONGODB_DB: 'save_billion_test', AUTH_SECRET: secret, AUTH_URL: base, AUTH_GOOGLE_ID: 'visual-only', AUTH_GOOGLE_SECRET: 'visual-only' }, stdio: 'inherit', windowsHide: true });
+const server = spawn(process.execPath, ['core/dist/main.js'], { env: { ...process.env, NODE_ENV: 'production', PORT: '3112', MONGODB_URI: 'mongodb://127.0.0.1:27019', MONGODB_DB: 'save_billion_test', AUTH_SECRET: secret, AUTH_URL: base, AUTH_GOOGLE_ID: 'visual-only', AUTH_GOOGLE_SECRET: 'visual-only' }, stdio: 'inherit', windowsHide: true });
 console.log('Visual fixture ready at port 3112. Write .scratch/stop-visual to stop and remove test data.');
 const timer = setInterval(async () => {
   if (!fs.existsSync('.scratch/stop-visual')) return;

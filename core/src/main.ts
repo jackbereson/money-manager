@@ -1,11 +1,10 @@
 import 'reflect-metadata';
-import { All, Controller, Get, Module, Req, Res } from '@nestjs/common';
+import { All, Controller, Module, Req, Res } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { Request as ExpressRequest, Response as ExpressResponse } from 'express';
-import { fileURLToPath } from 'node:url';
 import { handleAuth, authConfigured } from './auth.js';
 import { currentUser, privateJson, requestContext } from './lib/access.js';
 import { getDb } from './lib/mongodb.js';
@@ -20,11 +19,6 @@ const routes: Record<string, Partial<Record<string, (request: Request) => Promis
 };
 @Controller()
 class ApiController {
-  @Get(['/', '/login', '/admin'])
-  page(@Req() request: ExpressRequest, @Res() response: ExpressResponse) {
-    const file = request.path === '/' ? 'index.html' : `${request.path.slice(1)}.html`;
-    response.sendFile(fileURLToPath(new URL(`../../out/${file}`, import.meta.url)));
-  }
   @All(['api/*path', 'health', 'ready'])
   async handle(@Req() incoming: ExpressRequest & { rawBody?: Buffer }, @Res() outgoing: ExpressResponse) {
     const url = new URL(incoming.originalUrl, process.env.AUTH_URL);
@@ -35,7 +29,7 @@ class ApiController {
       ...(!['GET', 'HEAD'].includes(incoming.method) && body?.length ? { body: new Uint8Array(body) } : {}) });
     const response = await requestContext.run(request, async () => {
       try {
-        if (url.pathname === '/health') return privateJson({ ok: true });
+        if (url.pathname === '/health') return privateJson({ ok: true, revision: process.env.RENDER_GIT_COMMIT || null });
         if (url.pathname === '/ready') { await (await getDb()).command({ ping: 1 }); return privateJson({ ok: true }); }
         if (url.pathname.startsWith('/api/auth/')) return authConfigured() ? handleAuth(request) : privateJson({ error: 'Đăng nhập chưa được cấu hình.' }, 503);
         if (url.pathname === '/api/config' && incoming.method === 'GET') return privateJson({ configured: authConfigured(), databaseConfigured: Boolean(process.env.MONGODB_URI) });
@@ -73,7 +67,6 @@ app.use((req: ExpressRequest, res: ExpressResponse, next: () => void) => {
   if (origin.startsWith('https:')) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   next();
 });
-// Only the static export is public. Never serve the repository or dotenv files.
-app.useStaticAssets(fileURLToPath(new URL('../../out/', import.meta.url)), { dotfiles: 'deny', extensions: ['html'], index: 'index.html', redirect: false });
+// API service only: no UI routes, static files, Next.js or frontend build dependency.
 app.enableShutdownHooks();
 await app.listen(Number(process.env.PORT || 3200), '0.0.0.0');

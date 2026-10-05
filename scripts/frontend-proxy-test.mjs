@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import frontend from '../cloudflare/frontend.js';
+import frontend from '../webapp/cloudflare/frontend.js';
 
 const fetchOriginal = globalThis.fetch;
 let forwarded;

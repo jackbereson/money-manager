@@ -4,10 +4,11 @@ services:
     runtime: node
     plan: free
     region: singapore
-    buildCommand: npm ci && npm --prefix backend ci && npm run build:all
-    startCommand: npm --prefix backend start
+    rootDir: core
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
     healthCheckPath: /health
-    autoDeployTrigger: checksPass
+    autoDeployTrigger: off
     envVars:
       - key: NODE_VERSION
         value: 24
