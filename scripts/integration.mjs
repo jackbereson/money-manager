@@ -67,6 +67,8 @@ try {
   check((await api('/api/admin/users', 0, 'PATCH', { id: ownerIds[0], role: 'admin', status: 'active' })).status === 403, 'Member cannot escalate role');
   const all = await api('/api/admin/transactions', 2);
   check(all.data.transactions.some(row => row.id === aId) && all.data.transactions.some(row => row.id === b.data.id), 'Admin sees all users transactions');
+  const personalAdmin = await api('/api/transactions', 2);
+  check(personalAdmin.status === 200 && !personalAdmin.data.transactions.some(row => row.id === aId || row.id === b.data.id), 'Admin personal dashboard still isolates own transactions');
   check((await api('/api/admin/users', 2)).data.users.some(user => user.id === ownerIds[1]), 'Admin lists users');
   check((await api('/api/admin/transactions', 2, 'PATCH', { ...input, id: b.data.id, amount: 90000 })).status === 200, 'Admin updates another user transaction');
   check((await api('/api/admin/users', 2, 'PATCH', { id: ownerIds[2], role: 'member', status: 'blocked' })).status === 400, 'Admin cannot lock or demote own session');
@@ -90,6 +92,10 @@ try {
   check(anonymousPage.status === 307 && anonymousPage.headers.get('location') === '/login', 'Admin page guards anonymous visits');
   const memberPage = await fetch(`${base}/admin`, { headers: { cookie: cookies[0] }, redirect: 'manual' });
   check(memberPage.status === 307 && memberPage.headers.get('location') === '/', 'Admin page guards member visits');
+  const adminPage = await fetch(`${base}/admin`, { headers: { cookie: cookies[2] }, redirect: 'manual' });
+  check(adminPage.status === 200 && (await adminPage.text()).includes('Sổ thu chi cá nhân'), 'Admin opens management dashboard with personal dashboard link');
+  const adminPersonalPage = await fetch(`${base}/`, { headers: { cookie: cookies[2] }, redirect: 'manual' });
+  check(adminPersonalPage.status === 200 && (await adminPersonalPage.text()).includes('Trang quản trị'), 'Admin opens personal dashboard with management dashboard link');
   console.log(`\n${checks} integration checks passed (${workers ? 'Cloudflare Workers' : 'Node.js'}).`);
 } finally {
   if (server) {

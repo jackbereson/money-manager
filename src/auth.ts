@@ -13,9 +13,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
       const ownerId = `google:${account.providerAccountId}`;
       const email = user.email.toLowerCase();
       const adminEmails = (process.env.AUTH_ADMIN_EMAILS || '').split(',').map(value => value.trim().toLowerCase()).filter(Boolean);
+      const configuredAdmin = adminEmails.includes(email);
       try {
         const users = await getUsers();
-        await users.updateOne({ ownerId }, { $set: { name: user.name || 'Bạn', email, image: user.image || '', lastLoginAt: new Date() }, $setOnInsert: { ownerId, role: adminEmails.includes(email) ? 'admin' : 'member', status: 'active', createdAt: new Date() } }, { upsert: true });
+        await users.updateOne({ ownerId }, {
+          $set: { name: user.name || 'Bạn', email, image: user.image || '', lastLoginAt: new Date(), ...(configuredAdmin ? { role: 'admin' as const } : {}) },
+          $setOnInsert: { ownerId, ...(!configuredAdmin ? { role: 'member' as const } : {}), status: 'active', createdAt: new Date() },
+        }, { upsert: true });
         return (await users.findOne({ ownerId }))?.status === 'active';
       } catch { return false; }
     },
